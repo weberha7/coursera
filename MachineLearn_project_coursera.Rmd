@@ -1,0 +1,94 @@
+---
+title: "Peer-graded Assignment: Prediction Assignment Writeup"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Preparation
+Loading required libraries.
+```{r project, echo=F}
+library(caret)
+library(rpart.plot)
+library(rattle,lib.loc="/tmp/")
+library(repmis,lib.loc="/tmp/")
+library(rpart)
+library(randomForest)
+```
+## Getting data
+```{r data, echo=T}
+trainingsource <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+testingsource <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+training <- source_data(trainingsource, na.strings = c("NA", "#DIV/0!", ""), header = TRUE)
+testing <- source_data(testingsource, na.strings = c("NA", "#DIV/0!", ""), header = TRUE)
+```
+## Fixing a seed
+```{r seed}
+set.seed(12345)
+```
+## Removing non-informative variables/ missing data
+```{r remove, echo=T}
+training <- training[, colSums(is.na(training)) == 0]
+testing <- testing[, colSums(is.na(testing)) == 0]
+```
+## Removing technical variables
+```{r remove2, echo=TRUE}
+# var1 seems to be redundant to problem_id
+# var2 seems not to be relevant
+# var3,4,5 is most likely non-informative (timestamp)
+# var6 is most likely non-informative
+train<-training[,c(-1,-2,-3,-4,-5,-6)]
+test<- testing[,c(-1,-2,-3,-4,-5,-6)]
+```
+## Splitting the training into 2 partitions
+```{r partitioning}
+Trainset <- createDataPartition(train$classe, p = 0.8, list = FALSE)
+train <- train[Trainset, ]
+valid <- train[-Trainset, ]
+```
+## Training
+```{r caret train}
+control <- trainControl(method = "cv", number = 4)
+fitmod_rpart <- train(classe ~ ., data = train, method = "rpart", 
+                   trControl = control)
+print(fitmod_rpart, digits = 4)
+```
+```{r, echo=TRUE}
+rpart.plot(fitmod_rpart$finalModel)
+```
+## Prediction
+```{r}
+# predict outcomes using validation set
+predict_rpart <- predict(fitmod_rpart, valid)
+# Show prediction result
+conf_rpart<-confusionMatrix(valid$classe, predict_rpart)
+
+```
+##Accuracy with 95% confidence interval
+```{r}
+paste(conf_rpart$overall["Accuracy"],conf_rpart$overall["AccuracyLower"],conf_rpart$overall["AccuracyUpper"])
+```
+This result is not really satisfying. Let's try with random forests with same control settings.
+##Random Forests
+```{r, echo=FALSE}
+fitmod_rf <- train(classe ~ ., data = train, method = "rf",trControl = control)
+print(fitmod_rf$finalModel, digits = 4)
+```
+##Prediction with Random Forests
+```{r}
+# predict outcomes using validation set
+predict_rf <- predict(fitmod_rf, valid)
+# Show prediction result
+conf_rf<-confusionMatrix(valid$classe, predict_rf)
+```
+##Accuracy with 95% confidence interval
+```{r}
+paste(conf_rf$overall["Accuracy"],conf_rf$overall["AccuracyLower"],conf_rf$overall["AccuracyUpper"])
+```
+With this result we obviously prefer the random forest approach and use this approach for the final prediction on the testing data.
+```{r}
+predict(fitmod_rf, test)
+```
+
