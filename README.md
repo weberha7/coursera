@@ -1,4 +1,2 @@
 # coursera
-Project work Practical Machine Learning 
-
-This is the project from "Practical Machine Learning by Johns Hopkins University" on coursera
+This is the project work from "Practical Machine Learning by Johns Hopkins University" on coursera
